@@ -1,7 +1,3 @@
-// const { ethers, network } = require("hardhat");
-// const { expect } = require("chai");
-// const { smock } = require("@defi-wonderland/smock");
-
 import { ethers, network } from "hardhat";
 import { expect } from "chai";
 import { smock } from "@defi-wonderland/smock";
