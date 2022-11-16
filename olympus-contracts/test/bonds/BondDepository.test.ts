@@ -4,6 +4,7 @@ import { FakeContract, MockContract, MockContractFactory, smock } from "@defi-wo
 import { MockERC20, OlympusBondDepositoryV2 } from "../../types";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract, ContractFactory } from "ethers";
+import { bne } from "../utils/scripts";
 
 describe("Bond Depository", async () => {
     const LARGE_APPROVAL = "100000000000000000000000000000000";
@@ -13,7 +14,7 @@ describe("Bond Depository", async () => {
 
     // Increase timestamp by amount determined by `offset`
 
-    let deployer;
+    let deployer: SignerWithAddress;
     let alice: SignerWithAddress;
     let bob: SignerWithAddress;
     let carol: SignerWithAddress;
@@ -93,8 +94,11 @@ describe("Bond Depository", async () => {
 
         await dai.mint(deployer.address, initialDeposit);
         await dai.approve(treasury.address, initialDeposit);
-        //await treasury.deposit(initialDeposit, dai.address, "10000000000000");
-        await ohm.mint(deployer.address, "10000000000000");
+
+        // await treasury.deposit(initialDeposit, carol.address, "10000000000000");
+
+        // await ohm.mint(deployer.address, "10000000000000");
+        await ohm.mint(deployer.address, "1000");
         await treasury.baseSupply.returns(await ohm.totalSupply());
 
         // Mint enough gOHM to payout rewards
@@ -118,7 +122,7 @@ describe("Bond Depository", async () => {
         );
     });
 
-    const increaseTime = (amount_seconds: Number): void => { network.provider.send("evm_increaseTime", [amount_seconds]); }
+    const increaseTime = async (amount_seconds: Number): Promise<void> => { await network.provider.send("evm_increaseTime", [amount_seconds]); }
 
     it("should create market", async () => {
         expect(await depository.isLive(bid)).to.equal(true);
@@ -193,7 +197,8 @@ describe("Bond Depository", async () => {
     it("should decay debt", async () => {
         const [, , , totalDebt, , ,] = await depository.markets(0);
 
-        await network.provider.send("evm_increaseTime", [100]);
+        // await network.provider.send("evm_increaseTime", [100]);
+        await increaseTime(100);
         await depository.connect(bob).deposit(bid, "0", initialPrice, bob.address, carol.address);
 
         const [, , , newTotalDebt, , ,] = await depository.markets(0);
@@ -317,6 +322,9 @@ describe("Bond Depository", async () => {
         const daoBalance = await ohm.balanceOf(deployer.address);
         console.log("daoBalance", daoBalance);
 
+        const [, , , totalDebt, , ,] = await depository.markets(0);
+        console.log("CURRENT DEBT", totalDebt);
+
         const carolsCurrentBalance = await ohm.balanceOf(carol.address);
 
         const amount = "1000000000000000"; // 10,000
@@ -325,9 +333,7 @@ describe("Bond Depository", async () => {
             .connect(bob)
             .callStatic.deposit(bid, amount, initialPrice, bob.address, carol.address);
 
-
         console.log("initialPrice", initialPrice);
-        console.log("bid", bid);
         console.log("payout", payout);
 
         await depository
@@ -337,6 +343,12 @@ describe("Bond Depository", async () => {
         await depository
             .connect(bob)
             .deposit(bid, amount, initialPrice, bob.address, carol.address);
+
+        await depository
+            .connect(bob)
+            .deposit(bid, amount, initialPrice, bob.address, carol.address);
+
+        increaseTime(1000000);
 
         // Mint ohm for depository to payout reward
         await ohm.mint(depository.address, amount);
@@ -359,6 +371,8 @@ describe("Bond Depository", async () => {
         console.log("carolReward", carolReward);
         const carolsBalanceNow = await ohm.balanceOf(carol.address);
         console.log("Carol's New Balance", carolsBalanceNow);
+        const [, , , td, , ,] = await depository.markets(0);
+        console.log("CURRENT DEBT", td);
     });
 
     it("run long term operations", async () => {});
